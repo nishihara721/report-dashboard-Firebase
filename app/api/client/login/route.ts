@@ -1,40 +1,35 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { supabase } from '@/app/lib/supabase';
+import { getClientUserByUsername } from '@/app/lib/db';
 
 export const dynamic = 'force-dynamic';
+
+type ClientUser = {
+  id: string;
+  username: string;
+  display_name: string;
+  password_hash: string;
+  pages: string[];
+  is_active: boolean;
+};
 
 export async function POST(request: Request) {
   try {
     const { username, password } = await request.json();
 
-    // ユーザーを取得
-    const { data: user, error } = await supabase
-      .from('client_users')
-      .select('*')
-      .eq('username', username)
-      .eq('is_active', true)
-      .single();
+    const user = await getClientUserByUsername(username) as ClientUser | null;
 
-    if (error || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'IDまたはパスワードが違います' }, { status: 401 });
     }
 
-    // パスワード検証
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
       return NextResponse.json({ error: 'IDまたはパスワードが違います' }, { status: 401 });
     }
 
-    // 権限を取得
-    const { data: permissions } = await supabase
-      .from('client_permissions')
-      .select('page')
-      .eq('user_id', user.id);
+    const pages = user.pages ?? ['shared'];
 
-    const pages = permissions?.map((p) => p.page) ?? ['shared'];
-
-    // セッション情報をレスポンスに含める
     const response = NextResponse.json({
       success: true,
       user: {
@@ -45,7 +40,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // Cookieにセッション情報を保存（7日間）
     response.cookies.set('client_session', JSON.stringify({
       id: user.id,
       username: user.username,

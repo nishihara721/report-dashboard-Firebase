@@ -1,21 +1,37 @@
-import { supabase } from './supabase';
+import { adminDb } from './firebase-admin';
+
+type PriceRule = { fromDate: string; price: number };
+
+// ==========================================
+// 日付フィルタリング用のヘルパー関数
+// ==========================================
+function filterByDate<T extends { date: string }>(
+  docs: T[],
+  from?: string,
+  to?: string
+): T[] {
+  return docs.filter((d) => {
+    if (from && d.date < from) return false;
+    if (to && d.date > to) return false;
+    return true;
+  });
+}
 
 // ==========================================
 // 期間別レポートをDBから取得する関数
 // ==========================================
 export async function getReportDataFromDB(from?: string, to?: string) {
-  let query = supabase
-    .from('daily_reports')
-    .select('*')
-    .order('date', { ascending: true });
+  const snapshot = await adminDb
+    .collection('daily_reports')
+    .orderBy('date', 'asc')
+    .get();
 
-  if (from) query = query.gte('date', from);
-  if (to) query = query.lte('date', to);
+  const docs = snapshot.docs.map((doc) => doc.data() as {
+    date: string; pv: number; imp: number; cl: number;
+    friend: number; cv: number; billing: number;
+  });
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  return (data ?? []).map((d) => ({
+  return filterByDate(docs, from, to).map((d) => ({
     date: d.date,
     pv: d.pv,
     imp: d.imp,
@@ -34,19 +50,18 @@ export async function getReportDataFromDB(from?: string, to?: string) {
 // ポップアップ別レポートをDBから取得する関数
 // ==========================================
 export async function getReportDataByPFromDB(pValue: string, from?: string, to?: string) {
-  let query = supabase
-    .from('daily_reports_by_p')
-    .select('*')
-    .eq('p_value', pValue)
-    .order('date', { ascending: true });
+  const snapshot = await adminDb
+    .collection('daily_reports_by_p')
+    .where('p_value', '==', pValue)
+    .orderBy('date', 'asc')
+    .get();
 
-  if (from) query = query.gte('date', from);
-  if (to) query = query.lte('date', to);
+  const docs = snapshot.docs.map((doc) => doc.data() as {
+    date: string; pv: number; imp: number; cl: number;
+    friend: number; cv: number; billing: number; p_value: string;
+  });
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  return (data ?? []).map((d) => ({
+  return filterByDate(docs, from, to).map((d) => ({
     date: d.date,
     pv: d.pv,
     imp: d.imp,
@@ -65,19 +80,18 @@ export async function getReportDataByPFromDB(pValue: string, from?: string, to?:
 // シナリオ別レポートをDBから取得する関数
 // ==========================================
 export async function getReportDataBySFromDB(sValue: string, from?: string, to?: string) {
-  let query = supabase
-    .from('daily_reports_by_s')
-    .select('*')
-    .eq('s_value', sValue)
-    .order('date', { ascending: true });
+  const snapshot = await adminDb
+    .collection('daily_reports_by_s')
+    .where('s_value', '==', sValue)
+    .orderBy('date', 'asc')
+    .get();
 
-  if (from) query = query.gte('date', from);
-  if (to) query = query.lte('date', to);
+  const docs = snapshot.docs.map((doc) => doc.data() as {
+    date: string; pv: number; imp: number; cl: number;
+    friend: number; cv: number; billing: number; s_value: string;
+  });
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  return (data ?? []).map((d) => ({
+  return filterByDate(docs, from, to).map((d) => ({
     date: d.date,
     pv: d.pv,
     imp: d.imp,
@@ -96,19 +110,18 @@ export async function getReportDataBySFromDB(sValue: string, from?: string, to?:
 // 離脱地点別レポートをDBから取得する関数
 // ==========================================
 export async function getReportDataByExitFromDB(exitValue: string, from?: string, to?: string) {
-  let query = supabase
-    .from('daily_reports_by_exit')
-    .select('*')
-    .eq('exit_value', exitValue)
-    .order('date', { ascending: true });
+  const snapshot = await adminDb
+    .collection('daily_reports_by_exit')
+    .where('exit_value', '==', exitValue)
+    .orderBy('date', 'asc')
+    .get();
 
-  if (from) query = query.gte('date', from);
-  if (to) query = query.lte('date', to);
+  const docs = snapshot.docs.map((doc) => doc.data() as {
+    date: string; pv: number; imp: number; cl: number;
+    friend: number; exit_value: string;
+  });
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  return (data ?? []).map((d) => ({
+  return filterByDate(docs, from, to).map((d) => ({
     date: d.date,
     pv: d.pv,
     imp: d.imp,
@@ -124,19 +137,18 @@ export async function getReportDataByExitFromDB(exitValue: string, from?: string
 // 訴求別レポートをDBから取得する関数
 // ==========================================
 export async function getReportDataByAppealFromDB(appealValue: string, from?: string, to?: string) {
-  let query = supabase
-    .from('daily_reports_by_appeal')
-    .select('*')
-    .eq('appeal_value', appealValue)
-    .order('date', { ascending: true });
+  const snapshot = await adminDb
+    .collection('daily_reports_by_appeal')
+    .where('appeal_value', '==', appealValue)
+    .orderBy('date', 'asc')
+    .get();
 
-  if (from) query = query.gte('date', from);
-  if (to) query = query.lte('date', to);
+  const docs = snapshot.docs.map((doc) => doc.data() as {
+    date: string; pv: number; imp: number; cl: number;
+    friend: number; cv: number; billing: number; appeal_value: string;
+  });
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  return (data ?? []).map((d) => ({
+  return filterByDate(docs, from, to).map((d) => ({
     date: d.date,
     pv: d.pv,
     imp: d.imp,
@@ -153,41 +165,24 @@ export async function getReportDataByAppealFromDB(appealValue: string, from?: st
 
 // ==========================================
 // 期間別（共有用）レポートをDBから取得する関数
-// daily_reportsとdaily_reports_sharedを結合して返す
 // ==========================================
 export async function getSharedReportDataFromDB(from?: string, to?: string) {
-  let baseQuery = supabase
-    .from('daily_reports')
-    .select('*')
-    .order('date', { ascending: true });
+  const [baseSnapshot, sharedSnapshot] = await Promise.all([
+    adminDb.collection('daily_reports').orderBy('date', 'asc').get(),
+    adminDb.collection('daily_reports_shared').orderBy('date', 'asc').get(),
+  ]);
 
-  if (from) baseQuery = baseQuery.gte('date', from);
-  if (to) baseQuery = baseQuery.lte('date', to);
+  const baseDocs = baseSnapshot.docs.map((doc) => doc.data() as {
+    date: string; pv: number; imp: number; cl: number; friend: number;
+  });
 
-  let sharedQuery = supabase
-    .from('daily_reports_shared')
-    .select('*')
-    .order('date', { ascending: true });
-
-  if (from) sharedQuery = sharedQuery.gte('date', from);
-  if (to) sharedQuery = sharedQuery.lte('date', to);
-
-  const [baseData, sharedData] = await Promise.all([baseQuery, sharedQuery]);
-
-  if (baseData.error) throw new Error(baseData.error.message);
-  if (sharedData.error) throw new Error(sharedData.error.message);
-
-  // 日付をキーにしたsharedMapを作成
   const sharedMap: Record<string, { cv: number; unit_price: number; billing: number }> = {};
-  for (const d of sharedData.data ?? []) {
-    sharedMap[d.date] = {
-      cv: d.cv,
-      unit_price: d.unit_price,
-      billing: d.billing,
-    };
-  }
+  sharedSnapshot.docs.forEach((doc) => {
+    const d = doc.data();
+    sharedMap[d.date] = { cv: d.cv, unit_price: d.unit_price, billing: d.billing };
+  });
 
-  return (baseData.data ?? []).map((d) => {
+  return filterByDate(baseDocs, from, to).map((d) => {
     const shared = sharedMap[d.date];
     const cv = shared?.cv ?? 0;
     const unitPrice = shared?.unit_price ?? 0;
@@ -211,16 +206,69 @@ export async function getSharedReportDataFromDB(from?: string, to?: string) {
 }
 
 // ==========================================
+// ポップアップの選択肢一覧をDBから取得する関数
+// ==========================================
+export async function getPValuesFromDB(): Promise<string[]> {
+  const snapshot = await adminDb.collection('distinct_p_values').get();
+  return snapshot.docs.map((doc) => doc.id).sort();
+}
+
+// ==========================================
+// シナリオの選択肢一覧をDBから取得する関数
+// ==========================================
+export async function getSValuesFromDB(): Promise<string[]> {
+  const snapshot = await adminDb.collection('distinct_s_values').get();
+  return snapshot.docs.map((doc) => doc.id).sort();
+}
+
+// ==========================================
+// 離脱地点の選択肢一覧をDBから取得する関数
+// ==========================================
+export async function getExitValuesFromDB(): Promise<string[]> {
+  const snapshot = await adminDb.collection('distinct_exit_values').get();
+  return snapshot.docs.map((doc) => doc.id).sort();
+}
+
+// ==========================================
 // 訴求の選択肢一覧をDBから取得する関数
 // ==========================================
 export async function getAppealValuesFromDB(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('distinct_appeal_values')
-    .select('appeal_value');
+  const snapshot = await adminDb.collection('distinct_appeal_values').get();
+  return snapshot.docs.map((doc) => doc.id).sort();
+}
 
-  if (error) throw new Error(error.message);
+// ==========================================
+// 直近1週間にデータがあるポップアップ一覧をDBから取得する関数
+// ==========================================
+export async function getActivePValuesFromDB(): Promise<string[]> {
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const fromDate = oneWeekAgo.toISOString().slice(0, 10);
 
-  return (data?.map((d) => d.appeal_value) ?? []).sort();
+  const snapshot = await adminDb
+    .collection('daily_reports_by_p')
+    .where('date', '>=', fromDate)
+    .get();
+
+  const values = new Set<string>(snapshot.docs.map((doc) => doc.data().p_value));
+  return [...values].sort();
+}
+
+// ==========================================
+// 直近1週間にデータがあるシナリオ一覧をDBから取得する関数
+// ==========================================
+export async function getActiveSValuesFromDB(): Promise<string[]> {
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const fromDate = oneWeekAgo.toISOString().slice(0, 10);
+
+  const snapshot = await adminDb
+    .collection('daily_reports_by_s')
+    .where('date', '>=', fromDate)
+    .get();
+
+  const values = new Set<string>(snapshot.docs.map((doc) => doc.data().s_value));
+  return [...values].sort();
 }
 
 // ==========================================
@@ -231,77 +279,131 @@ export async function getActiveAppealValuesFromDB(): Promise<string[]> {
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
   const fromDate = oneWeekAgo.toISOString().slice(0, 10);
 
-  const { data, error } = await supabase
-    .from('daily_reports_by_appeal')
-    .select('appeal_value')
-    .gte('date', fromDate)
-    .order('appeal_value', { ascending: true });
+  const snapshot = await adminDb
+    .collection('daily_reports_by_appeal')
+    .where('date', '>=', fromDate)
+    .get();
 
-  if (error) throw new Error(error.message);
-
-  const values = new Set<string>(data?.map((d) => d.appeal_value) ?? []);
+  const values = new Set<string>(snapshot.docs.map((doc) => doc.data().appeal_value));
   return [...values].sort();
 }
 
 // ==========================================
-// ポップアップの選択肢一覧をDBから取得する関数
+// メモを取得する関数
 // ==========================================
-export async function getPValuesFromDB(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('distinct_p_values')
-    .select('p_value');
+export async function getNotesFromDB(from?: string, to?: string) {
+  const snapshot = await adminDb.collection('daily_notes').get();
 
-  if (error) throw new Error(error.message);
+  const noteMap: Record<string, string> = {};
+  snapshot.docs.forEach((doc) => {
+    const d = doc.data();
+    if (from && d.date < from) return;
+    if (to && d.date > to) return;
+    noteMap[d.date] = d.note;
+  });
 
-  return (data?.map((d) => d.p_value) ?? []).sort();
+  return noteMap;
 }
 
 // ==========================================
-// シナリオの選択肢一覧をDBから取得する関数
+// メモを保存する関数
 // ==========================================
-export async function getSValuesFromDB(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('distinct_s_values')
-    .select('s_value');
-
-  if (error) throw new Error(error.message);
-
-  return (data?.map((d) => d.s_value) ?? []).sort();
+export async function upsertNoteFromDB(date: string, note: string) {
+  await adminDb.collection('daily_notes').doc(date).set({
+    date,
+    note,
+    updated_at: new Date().toISOString(),
+  }, { merge: true });
 }
 
 // ==========================================
-// 離脱地点の選択肢一覧をDBから取得する関数
+// クライアントユーザーを取得する関数
 // ==========================================
-export async function getExitValuesFromDB(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('distinct_exit_values')
-    .select('exit_value');
+export async function getClientUsers() {
+  const snapshot = await adminDb.collection('client_users').orderBy('created_at', 'desc').get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
 
-  if (error) throw new Error(error.message);
+// ==========================================
+// クライアントユーザーを作成する関数
+// ==========================================
+export async function createClientUser(data: {
+  username: string;
+  passwordHash: string;
+  displayName: string;
+  pages: string[];
+}) {
+  const ref = await adminDb.collection('client_users').add({
+    username: data.username,
+    password_hash: data.passwordHash,
+    display_name: data.displayName,
+    is_active: true,
+    pages: data.pages,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
+  return ref.id;
+}
 
-  return (data?.map((d) => d.exit_value) ?? []).sort();
+// ==========================================
+// クライアントユーザーを更新する関数
+// ==========================================
+export async function updateClientUser(id: string, data: {
+  passwordHash?: string;
+  displayName?: string;
+  pages?: string[];
+  isActive?: boolean;
+}) {
+  const updateData: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (data.passwordHash) updateData.password_hash = data.passwordHash;
+  if (data.displayName) updateData.display_name = data.displayName;
+  if (data.pages) updateData.pages = data.pages;
+  if (data.isActive !== undefined) updateData.is_active = data.isActive;
+
+  await adminDb.collection('client_users').doc(id).update(updateData);
+}
+
+// ==========================================
+// クライアントユーザーを削除する関数
+// ==========================================
+export async function deleteClientUser(id: string) {
+  await adminDb.collection('client_users').doc(id).delete();
+}
+
+// ==========================================
+// ユーザー名でクライアントユーザーを検索する関数
+// ==========================================
+export async function getClientUserByUsername(username: string) {
+  const snapshot = await adminDb
+    .collection('client_users')
+    .where('username', '==', username)
+    .where('is_active', '==', true)
+    .get();
+
+  if (snapshot.empty) return null;
+  const doc = snapshot.docs[0];
+  return { id: doc.id, ...doc.data() };
 }
 
 // ==========================================
 // サマリ用：月別・p別・s別をDBから取得してまとめて集計する関数
 // ==========================================
 export async function getSummaryDataFromDB() {
-  const [dailyData, pData, sData] = await Promise.all([
-    supabase.from('daily_reports').select('*').order('date', { ascending: true }).limit(10000),
-    supabase.from('summary_by_p').select('*'),
-    supabase.from('summary_by_s').select('*'),
+  const [dailySnapshot, pSnapshot, sSnapshot] = await Promise.all([
+    adminDb.collection('daily_reports').orderBy('date', 'asc').get(),
+    adminDb.collection('summary_by_p').get(),
+    adminDb.collection('summary_by_s').get(),
   ]);
-
-  if (dailyData.error) throw new Error(dailyData.error.message);
-  if (pData.error) throw new Error(pData.error.message);
-  if (sData.error) throw new Error(sData.error.message);
 
   // 月別集計
   const monthMap: Record<string, {
     pv: number; imp: number; cl: number; friend: number; cv: number; billing: number;
   }> = {};
 
-  for (const d of dailyData.data ?? []) {
+  dailySnapshot.docs.forEach((doc) => {
+    const d = doc.data();
     const month = d.date.slice(0, 7);
     if (!monthMap[month]) monthMap[month] = { pv: 0, imp: 0, cl: 0, friend: 0, cv: 0, billing: 0 };
     monthMap[month].pv += d.pv;
@@ -310,9 +412,9 @@ export async function getSummaryDataFromDB() {
     monthMap[month].friend += d.friend;
     monthMap[month].cv += d.cv;
     monthMap[month].billing += d.billing ?? 0;
-  }
+  });
 
-  const totalPv = (dailyData.data ?? []).reduce((acc, d) => acc + d.pv, 0);
+  const totalPv = dailySnapshot.docs.reduce((acc, doc) => acc + doc.data().pv, 0);
 
   // 月別の出力
   const byMonth = Object.entries(monthMap)
@@ -331,114 +433,45 @@ export async function getSummaryDataFromDB() {
       billing: d.billing,
     }));
 
-  // p別の出力（ビューから直接取得）
-  const byP = (pData.data ?? [])
-    .sort((a, b) => a.p_value.localeCompare(b.p_value))
-    .map((d) => ({
-      label: d.p_value,
-      pv: totalPv,
-      imp: d.imp,
-      impRate: totalPv > 0 ? ((d.imp / totalPv) * 100).toFixed(2) + '%' : '-',
-      cl: d.cl,
-      ctr: d.imp > 0 ? ((d.cl / d.imp) * 100).toFixed(2) + '%' : '-',
-      friend: d.friend,
-      friendRate: d.cl > 0 ? ((d.friend / d.cl) * 100).toFixed(2) + '%' : '-',
-      cv: d.cv,
-      cvr: d.friend > 0 ? ((d.cv / d.friend) * 100).toFixed(2) + '%' : '-',
-      billing: d.billing,
-    }));
+  // p別の出力
+  const byP = pSnapshot.docs
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((doc) => {
+      const d = doc.data();
+      return {
+        label: doc.id,
+        pv: totalPv,
+        imp: d.imp,
+        impRate: totalPv > 0 ? ((d.imp / totalPv) * 100).toFixed(2) + '%' : '-',
+        cl: d.cl,
+        ctr: d.imp > 0 ? ((d.cl / d.imp) * 100).toFixed(2) + '%' : '-',
+        friend: d.friend,
+        friendRate: d.cl > 0 ? ((d.friend / d.cl) * 100).toFixed(2) + '%' : '-',
+        cv: d.cv,
+        cvr: d.friend > 0 ? ((d.cv / d.friend) * 100).toFixed(2) + '%' : '-',
+        billing: d.billing,
+      };
+    });
 
-  // s別の出力（ビューから直接取得）
-  const byS = (sData.data ?? [])
-    .sort((a, b) => a.s_value.localeCompare(b.s_value))
-    .map((d) => ({
-      label: d.s_value,
-      pv: totalPv,
-      imp: d.imp,
-      impRate: totalPv > 0 ? ((d.imp / totalPv) * 100).toFixed(2) + '%' : '-',
-      cl: d.cl,
-      ctr: d.imp > 0 ? ((d.cl / d.imp) * 100).toFixed(2) + '%' : '-',
-      friend: d.friend,
-      friendRate: d.cl > 0 ? ((d.friend / d.cl) * 100).toFixed(2) + '%' : '-',
-      cv: d.cv,
-      cvr: d.friend > 0 ? ((d.cv / d.friend) * 100).toFixed(2) + '%' : '-',
-      billing: d.billing,
-    }));
+  // s別の出力
+  const byS = sSnapshot.docs
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((doc) => {
+      const d = doc.data();
+      return {
+        label: doc.id,
+        pv: totalPv,
+        imp: d.imp,
+        impRate: totalPv > 0 ? ((d.imp / totalPv) * 100).toFixed(2) + '%' : '-',
+        cl: d.cl,
+        ctr: d.imp > 0 ? ((d.cl / d.imp) * 100).toFixed(2) + '%' : '-',
+        friend: d.friend,
+        friendRate: d.cl > 0 ? ((d.friend / d.cl) * 100).toFixed(2) + '%' : '-',
+        cv: d.cv,
+        cvr: d.friend > 0 ? ((d.cv / d.friend) * 100).toFixed(2) + '%' : '-',
+        billing: d.billing,
+      };
+    });
 
   return { byMonth, byP, byS };
-}
-
-
-// ==========================================
-// 直近1週間にデータがあるポップアップ一覧をDBから取得する関数
-// ==========================================
-export async function getActivePValuesFromDB(): Promise<string[]> {
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  const fromDate = oneWeekAgo.toISOString().slice(0, 10); // "2026-06-25"
-
-  const { data, error } = await supabase
-    .from('daily_reports_by_p')
-    .select('p_value')
-    .gte('date', fromDate)
-    .order('p_value', { ascending: true });
-
-  if (error) throw new Error(error.message);
-
-  const values = new Set<string>(data?.map((d) => d.p_value) ?? []);
-  return [...values].sort();
-}
-
-// ==========================================
-// 直近1週間にデータがあるシナリオ一覧をDBから取得する関数
-// ==========================================
-export async function getActiveSValuesFromDB(): Promise<string[]> {
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  const fromDate = oneWeekAgo.toISOString().slice(0, 10);
-
-  const { data, error } = await supabase
-    .from('daily_reports_by_s')
-    .select('s_value')
-    .gte('date', fromDate)
-    .order('s_value', { ascending: true });
-
-  if (error) throw new Error(error.message);
-
-  const values = new Set<string>(data?.map((d) => d.s_value) ?? []);
-  return [...values].sort();
-}
-
-// ==========================================
-// メモを取得する関数
-// ==========================================
-export async function getNotesFromDB(from?: string, to?: string) {
-  let query = supabase
-    .from('daily_notes')
-    .select('date, note')
-    .order('date', { ascending: true });
-
-  if (from) query = query.gte('date', from);
-  if (to) query = query.lte('date', to);
-
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  // 日付をキーにしたオブジェクトで返す
-  const noteMap: Record<string, string> = {};
-  for (const d of data ?? []) {
-    noteMap[d.date] = d.note;
-  }
-  return noteMap;
-}
-
-// ==========================================
-// メモを保存する関数
-// ==========================================
-export async function upsertNoteFromDB(date: string, note: string) {
-  const { error } = await supabase
-    .from('daily_notes')
-    .upsert({ date, note, updated_at: new Date().toISOString() }, { onConflict: 'date' });
-
-  if (error) throw new Error(error.message);
 }

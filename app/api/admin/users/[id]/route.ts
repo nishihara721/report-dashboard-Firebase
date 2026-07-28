@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { supabase } from '@/app/lib/supabase';
 import { getServerSession } from 'next-auth';
+import { updateClientUser, deleteClientUser } from '@/app/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,30 +19,18 @@ export async function PUT(
     const { id } = await params;
     const { password, displayName, pages, isActive } = await request.json();
 
-    const updateData: Record<string, unknown> = {
-      display_name: displayName,
-      is_active: isActive,
-      updated_at: new Date().toISOString(),
-    };
+    const updateData: {
+      passwordHash?: string;
+      displayName?: string;
+      pages?: string[];
+      isActive?: boolean;
+    } = { displayName, pages, isActive };
 
     if (password) {
-      updateData.password_hash = await bcrypt.hash(password, 10);
+      updateData.passwordHash = await bcrypt.hash(password, 10);
     }
 
-    const { error } = await supabase
-      .from('client_users')
-      .update(updateData)
-      .eq('id', id);
-
-    if (error) throw new Error(error.message);
-
-    if (pages) {
-      await supabase.from('client_permissions').delete().eq('user_id', id);
-      await supabase.from('client_permissions').insert(
-        pages.map((page: string) => ({ user_id: id, page }))
-      );
-    }
-
+    await updateClientUser(id, updateData);
     return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -62,14 +50,7 @@ export async function DELETE(
     }
 
     const { id } = await params;
-
-    const { error } = await supabase
-      .from('client_users')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw new Error(error.message);
-
+    await deleteClientUser(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
