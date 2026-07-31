@@ -1,6 +1,5 @@
 runConfig:
   minInstances: 0
-
 env:
   - variable: NEXTAUTH_SECRET
     secret: NEXTAUTH_SECRET
@@ -11,11 +10,11 @@ env:
   - variable: GOOGLE_CLIENT_SECRET
     secret: GOOGLE_CLIENT_SECRET
   - variable: FB_PROJECT_ID
-    secret: FIREBASE_PROJECT_ID
+    secret: FB_PROJECT_ID
   - variable: FB_CLIENT_EMAIL
-    secret: FIREBASE_CLIENT_EMAIL
+    secret: FB_CLIENT_EMAIL
   - variable: FB_PRIVATE_KEY
-    secret: FIREBASE_PRIVATE_KEY
+    secret: FB_PRIVATE_KEY
   - variable: SYNC_SECRET
     secret: SYNC_SECRET
   - variable: GOOGLE_SHEETS_ID
