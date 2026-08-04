@@ -475,3 +475,46 @@ export async function getSummaryDataFromDB() {
 
   return { byMonth, byP, byS };
 }
+
+// ==========================================
+// シナリオ×通数別レポートをDBから取得する関数
+// ==========================================
+export async function getScenarioStepsFromDB(sValue: string) {
+  const snapshot = await adminDb
+    .collection('scenario_steps')
+    .where('s_value', '==', sValue)
+    .get();
+
+  const docs = snapshot.docs.map((doc) => doc.data() as {
+    s_value: string;
+    step: string;
+    send_count: number;
+    click_count: number;
+    cv_count: number;
+    block_count: number;
+  });
+
+  // 通数でソート
+  docs.sort((a, b) => a.step.localeCompare(b.step, 'ja'));
+
+  // 1通目の送信人数を取得（CVRとブロック率の計算に使用）
+  const firstStepDoc = docs[0];
+  const firstSendCount = firstStepDoc?.send_count ?? 0;
+
+  return docs.map((d) => ({
+    step: d.step,
+    send_count: d.send_count,
+    click_count: d.click_count,
+    click_rate: d.send_count > 0
+      ? ((d.click_count / d.send_count) * 100).toFixed(2) + '%'
+      : '-',
+    cv_count: d.cv_count,
+    cvr: firstSendCount > 0
+      ? ((d.cv_count / firstSendCount) * 100).toFixed(2) + '%'
+      : '-',
+    block_count: d.block_count,
+    block_rate: firstSendCount > 0
+      ? ((d.block_count / firstSendCount) * 100).toFixed(2) + '%'
+      : '-',
+  }));
+}

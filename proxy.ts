@@ -16,5 +16,6 @@ export const config = {
     '/appeal/:path*',
     '/shared/:path*',
     '/admin/:path*',
+    '/scenario-steps/:path*',
   ],
 };

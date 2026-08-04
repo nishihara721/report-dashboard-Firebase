@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { dateMap, pMap, sMap, exitMap, appealMap, sharedMap } = body;
+    const { dateMap, pMap, sMap, exitMap, appealMap, sharedMap, scenarioStepMap } = body;
 
     const batch = adminDb.batch();
 
@@ -112,6 +112,20 @@ export async function POST(request: Request) {
       for (const d of sharedMap) {
         const ref = adminDb.collection('daily_reports_shared').doc(d.date);
         batch.set(ref, d, { merge: true });
+      }
+    }
+
+    // scenario_steps への保存
+    if (scenarioStepMap && scenarioStepMap.length > 0) {
+      for (const d of scenarioStepMap) {
+        const ref = adminDb.collection('scenario_steps').doc(`${d.s_value}__${d.step}`);
+        batch.set(ref, d, { merge: true });
+      }
+      // distinct_s_values の更新
+      const sValues = [...new Set(scenarioStepMap.map((d: { s_value: string }) => d.s_value))];
+      for (const s of sValues) {
+        const ref = adminDb.collection('distinct_s_values').doc(s as string);
+        batch.set(ref, { value: s }, { merge: true });
       }
     }
 
