@@ -24,7 +24,7 @@ LISMA engageのデータを集計・可視化するWebアプリです。
 ```
 スプレッドシート
       ↓
-GAS（1時間ごとに自動実行）
+GAS（手動実行）
       ↓
 Next.js API（/api/sync）
       ↓
