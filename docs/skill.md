@@ -1,6 +1,6 @@
 # レポートダッシュボード
 
-レポート集計・可視化するWebアプリです。
+LISMA engageのデータを集計・可視化するWebアプリです。
 
 ---
 
@@ -8,14 +8,14 @@
 
 | 項目 | 使用技術 |
 |---|---|
-| フレームワーク | Next.js 14（App Router） |
+| フレームワーク | Next.js 15（App Router） |
 | 言語 | TypeScript |
 | スタイリング | Tailwind CSS |
-| データベース | Supabase（PostgreSQL） |
+| データベース | Firebase Firestore |
 | DB同期 | Google Apps Script（GAS） |
 | 管理者認証 | NextAuth.js（Googleログイン） |
 | クライアント認証 | ID・パスワード（独自実装） |
-| ホスティング | Vercel |
+| ホスティング | Firebase App Hosting |
 
 ---
 
@@ -28,9 +28,9 @@ GAS（1時間ごとに自動実行）
       ↓
 Next.js API（/api/sync）
       ↓
-Supabase DB
+Firebase Firestore
       ↓
-ブラウザ ← Next.js ← Supabase
+ブラウザ ← Next.js ← Firestore
 ```
 
 ---
@@ -87,7 +87,7 @@ app/
 │   ├── appeal-values-active/     # 直近1週間の訴求一覧
 │   ├── notes/                    # メモの取得・保存
 │   ├── price-rules/              # 成果単価ルール（空配列を返す）
-│   └── sync/                     # GASからのデータ受け取り・DB保存
+│   └── sync/                     # GASからのデータ受け取り・Firestore保存
 │
 ├── components/                   # UIコンポーネント
 │   ├── NavBar.tsx                # サイドナビゲーション（PC）・下部ナビ（スマホ）
@@ -110,14 +110,16 @@ app/
 │   └── useColumnVisibility.ts    # 列の表示・非表示の状態管理
 │
 ├── lib/                          # サーバー側のロジック
-│   ├── db.ts                     # SupabaseからのDBデータ取得・集計
-│   ├── supabase.ts               # Supabaseクライアントの設定
+│   ├── db.ts                     # FirestoreからのDBデータ取得・集計
+│   ├── firebase.ts               # Firebaseクライアントの設定
+│   ├── firebase-admin.ts         # Firebase Admin SDKの設定
 │   └── utils.ts                  # 共通の計算・変換関数
 │
 ├── layout.tsx                    # 全ページ共通レイアウト（html/bodyのみ）
 └── globals.css                   # グローバルCSS
 
-middleware.ts                     # 管理者ページの認証チェック
+proxy.ts                          # 管理者ページの認証チェック
+apphosting.yaml                   # Firebase App Hostingの設定
 ```
 
 ---
@@ -125,11 +127,14 @@ middleware.ts                     # 管理者ページの認証チェック
 ## 各ファイルの役割
 
 ### `app/lib/db.ts`
-SupabaseからDBデータを取得・集計するメインロジックです。
-期間別・ポップアップ別・シナリオ別・離脱地点別・訴求別・共有用・サマリの各データを取得します。
+FirestoreからDBデータを取得・集計するメインロジックです。
+期間別・ポップアップ別・シナリオ別・離脱地点別・訴求別・共有用・サマリ・クライアントユーザー管理の各データを取得・操作します。
 
-### `app/lib/supabase.ts`
-Supabaseクライアントの初期化設定です。環境変数からURLとAPIキーを読み込みます。
+### `app/lib/firebase.ts`
+Firebaseクライアントの初期化設定です。フロントエンド側で使用します。
+
+### `app/lib/firebase-admin.ts`
+Firebase Admin SDKの初期化設定です。サーバー側のAPI処理で使用します。環境変数 `FB_PROJECT_ID`・`FB_CLIENT_EMAIL`・`FB_PRIVATE_KEY` から認証情報を読み込みます。
 
 ### `app/lib/utils.ts`
 アプリ全体で使い回す共通の計算・変換関数をまとめています。
@@ -151,134 +156,119 @@ Supabaseクライアントの初期化設定です。環境変数からURLとAPI
 ### `app/client/layout.tsx`
 クライアントユーザー専用のレイアウトです。ログイン状態の確認と、権限に応じたメニューの表示を管理します。
 
-### `middleware.ts`
+### `proxy.ts`
 未ログインの管理者ユーザーをログインページにリダイレクトします。クライアント用ページ（`/client/*`）は対象外で、独自認証で管理しています。
+
+### `apphosting.yaml`
+Firebase App Hostingの設定ファイルです。環境変数・シークレットの設定を管理します。
 
 ---
 
-## DBテーブル構成
+## Firestoreコレクション構成
+
+Firestoreはドキュメント指向のNoSQLデータベースです。以下のコレクションを使用しています。
 
 #### daily_reports（日次レポート）
-| 列名 | データ型 |
-|---|---|
-| id | BIGSERIAL |
-| date | DATE |
-| pv | INTEGER |
-| imp | INTEGER |
-| cl | INTEGER |
-| friend | INTEGER |
-| cv | INTEGER |
-| billing | INTEGER |
-| created_at | TIMESTAMPTZ |
-| updated_at | TIMESTAMPTZ |
+| フィールド名 | データ型 | 説明 |
+|---|---|---|
+| date | string | 日付（例: `2026-07-01`）※ドキュメントIDも同じ |
+| pv | number | PV数 |
+| imp | number | imp数 |
+| cl | number | CL数 |
+| friend | number | 友だち追加数 |
+| cv | number | CV数 |
+| billing | number | 請求額 |
 
 #### daily_reports_by_p（ポップアップ別）
-| 列名 | データ型 |
-|---|---|
-| id | BIGSERIAL |
-| date | DATE |
-| p_value | TEXT |
-| pv | INTEGER |
-| imp | INTEGER |
-| cl | INTEGER |
-| friend | INTEGER |
-| cv | INTEGER |
-| billing | INTEGER |
-| created_at | TIMESTAMPTZ |
-| updated_at | TIMESTAMPTZ |
+| フィールド名 | データ型 | 説明 |
+|---|---|---|
+| date | string | 日付 ※ドキュメントID: `{date}__{p_value}` |
+| p_value | string | ポップアップの識別値 |
+| pv | number | PV数 |
+| imp | number | imp数 |
+| cl | number | CL数 |
+| friend | number | 友だち追加数 |
+| cv | number | CV数 |
+| billing | number | 請求額 |
 
 #### daily_reports_by_s（シナリオ別）
-| 列名 | データ型 |
-|---|---|
-| id | BIGSERIAL |
-| date | DATE |
-| s_value | TEXT |
-| pv | INTEGER |
-| imp | INTEGER |
-| cl | INTEGER |
-| friend | INTEGER |
-| cv | INTEGER |
-| billing | INTEGER |
-| created_at | TIMESTAMPTZ |
-| updated_at | TIMESTAMPTZ |
+| フィールド名 | データ型 | 説明 |
+|---|---|---|
+| date | string | 日付 ※ドキュメントID: `{date}__{s_value}` |
+| s_value | string | シナリオの識別値 |
+| pv | number | PV数 |
+| imp | number | imp数 |
+| cl | number | CL数 |
+| friend | number | 友だち追加数 |
+| cv | number | CV数 |
+| billing | number | 請求額 |
 
 #### daily_reports_by_exit（離脱地点別）
-| 列名 | データ型 |
-|---|---|
-| id | BIGSERIAL |
-| date | DATE |
-| exit_value | TEXT |
-| pv | INTEGER |
-| imp | INTEGER |
-| cl | INTEGER |
-| friend | INTEGER |
-| created_at | TIMESTAMPTZ |
-| updated_at | TIMESTAMPTZ |
+| フィールド名 | データ型 | 説明 |
+|---|---|---|
+| date | string | 日付 ※ドキュメントID: `{date}__{exit_value}` |
+| exit_value | string | 離脱地点の識別値 |
+| pv | number | PV数 |
+| imp | number | imp数 |
+| cl | number | CL数 |
+| friend | number | 友だち追加数 |
 
 #### daily_reports_by_appeal（訴求別）
-| 列名 | データ型 |
-|---|---|
-| id | BIGSERIAL |
-| date | DATE |
-| appeal_value | TEXT |
-| pv | INTEGER |
-| imp | INTEGER |
-| cl | INTEGER |
-| friend | INTEGER |
-| cv | INTEGER |
-| billing | INTEGER |
-| created_at | TIMESTAMPTZ |
-| updated_at | TIMESTAMPTZ |
+| フィールド名 | データ型 | 説明 |
+|---|---|---|
+| date | string | 日付 ※ドキュメントID: `{date}__{appeal_value}` |
+| appeal_value | string | 訴求の識別値 |
+| pv | number | PV数 |
+| imp | number | imp数 |
+| cl | number | CL数 |
+| friend | number | 友だち追加数 |
+| cv | number | CV数 |
+| billing | number | 請求額 |
 
 #### daily_reports_shared（期間別共有用）
-| 列名 | データ型 |
-|---|---|
-| id | BIGSERIAL |
-| date | DATE |
-| cv | INTEGER |
-| unit_price | INTEGER |
-| billing | INTEGER |
-| created_at | TIMESTAMPTZ |
-| updated_at | TIMESTAMPTZ |
+| フィールド名 | データ型 | 説明 |
+|---|---|---|
+| date | string | 日付 ※ドキュメントIDも同じ |
+| cv | number | CV数 |
+| unit_price | number | 成果単価 |
+| billing | number | 請求額 |
 
 #### daily_notes（メモ）
-| 列名 | データ型 |
-|---|---|
-| id | BIGSERIAL |
-| date | DATE |
-| note | TEXT |
-| created_at | TIMESTAMPTZ |
-| updated_at | TIMESTAMPTZ |
+| フィールド名 | データ型 | 説明 |
+|---|---|---|
+| date | string | 日付 ※ドキュメントIDも同じ |
+| note | string | メモ内容 |
+| updated_at | string | 更新日時 |
 
 #### client_users（クライアントユーザー）
-| 列名 | データ型 |
-|---|---|
-| id | UUID |
-| username | TEXT |
-| password_hash | TEXT |
-| display_name | TEXT |
-| is_active | BOOLEAN |
-| created_at | TIMESTAMPTZ |
-| updated_at | TIMESTAMPTZ |
+| フィールド名 | データ型 | 説明 |
+|---|---|---|
+| username | string | ログインID |
+| password_hash | string | パスワード（bcryptハッシュ） |
+| display_name | string | 表示名 |
+| is_active | boolean | 有効/無効 |
+| pages | array | 閲覧可能ページの配列 |
+| created_at | string | 作成日時 |
+| updated_at | string | 更新日時 |
 
-#### client_permissions（クライアント権限）
-| 列名 | データ型 |
-|---|---|
-| id | BIGSERIAL |
-| user_id | UUID |
-| page | TEXT |
-| created_at | TIMESTAMPTZ |
+#### distinct_p_values / distinct_s_values / distinct_exit_values / distinct_appeal_values
+各値のユニーク一覧。ドキュメントIDが値そのもの。
 
-### Supabaseビュー（1000件制限回避のため作成）
+#### summary_by_p / summary_by_s
+p別・s別のサマリ集計データ。ドキュメントIDが値そのもの。
 
-| ビュー名 | 説明 |
-|---|---|
-| `distinct_p_values` | ユニークなp値一覧 |
-| `distinct_s_values` | ユニークなs値一覧 |
-| `distinct_exit_values` | ユニークな離脱地点値一覧 |
-| `distinct_appeal_values` | ユニークな訴求値一覧 |
-| `summary_by_p` | p別サマリ集計 |
-| `summary_by_s` | s別サマリ集計 |
+---
+
+## Firestoreの複合インデックス
+
+以下のコレクションで複合インデックスが必要です（初回アクセス時にエラーメッセージ内のURLから作成）：
+
+| コレクション | フィールド1 | フィールド2 |
+|---|---|---|
+| `daily_reports_by_p` | `p_value` 昇順 | `date` 昇順 |
+| `daily_reports_by_s` | `s_value` 昇順 | `date` 昇順 |
+| `daily_reports_by_exit` | `exit_value` 昇順 | `date` 昇順 |
+| `daily_reports_by_appeal` | `appeal_value` 昇順 | `date` 昇順 |
 
 ---
 
@@ -324,13 +314,21 @@ CVR           = CV数 ÷ 友だち追加数
 
 ## 環境変数
 
-`.env.local` に以下を設定してください。
+`.env.local` に以下を設定してください（ローカル開発用）。
 
 ```env
-# Google Sheets API
-GOOGLE_SHEETS_ID=スプレッドシートのID
-GOOGLE_SERVICE_ACCOUNT_EMAIL=サービスアカウントのメールアドレス
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+# Firebase クライアント設定
+NEXT_PUBLIC_FIREBASE_API_KEY=控えたapiKey
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=控えたauthDomain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=控えたprojectId
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=控えたstorageBucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=控えたmessagingSenderId
+NEXT_PUBLIC_FIREBASE_APP_ID=控えたappId
+
+# Firebase Admin SDK（FIREBASEプレフィックスは予約済みのためFBを使用）
+FB_PROJECT_ID=控えたproject_id
+FB_CLIENT_EMAIL=控えたclient_email
+FB_PRIVATE_KEY="控えたprivate_key"
 
 # NextAuth（Googleログイン）
 NEXTAUTH_URL=http://localhost:3000
@@ -338,22 +336,20 @@ NEXTAUTH_SECRET=ランダムな文字列
 GOOGLE_CLIENT_ID=OAuthクライアントID
 GOOGLE_CLIENT_SECRET=OAuthクライアントシークレット
 
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://XXXXXXXXXX.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyXXXXXXXX
-
 # GASとの認証用シークレット
 SYNC_SECRET=任意のランダムな文字列
 
-# CL数のデータソース（省略時は flipdesk）
-# flipdesk: 【データ】フリップデスクの「ポップアップ内のクリック数」列を使用
-# clicklog: 【データ】クリックログの「LINE追加」件数を使用
-CL_SOURCE=flipdesk
+# Google Sheets API（サマリ用）
+GOOGLE_SHEETS_ID=スプレッドシートのID
+GOOGLE_SERVICE_ACCOUNT_EMAIL=サービスアカウントのメールアドレス
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 
 # 期間別（共有用）ページの表示/非表示（省略時は非表示）
 # NEXT_PUBLIC_ 変数はビルド時に埋め込まれるため、変更後は再デプロイが必要
 NEXT_PUBLIC_ENABLE_SHARED_REPORT=true
 ```
+
+本番環境（Firebase App Hosting）では `apphosting.yaml` でシークレットを管理します。
 
 ---
 
@@ -367,3 +363,15 @@ NEXT_PUBLIC_ENABLE_SHARED_REPORT=true
 | ユーザー管理画面 | `@5s-inc.jp` ドメインのアカウントのみ |
 | クライアントログイン | ID・パスワード（Cookie認証） |
 | クライアントのページ閲覧 | 管理者が付与した権限のページのみ |
+
+---
+
+## 料金
+
+| サービス | 料金 |
+|---|---|
+| Firebase App Hosting | Blazeプラン必須・無料枠内はほぼ$0 |
+| Firestore | Sparkプラン無料枠内はほぼ$0 |
+| **合計** | **ほぼ$0/月（社内ツール規模の場合）** |
+
+Blazeプランへのクレジットカード登録は必要ですが、今回の規模では無料枠内に収まる可能性が高いです。
