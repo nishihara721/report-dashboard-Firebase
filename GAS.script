@@ -63,8 +63,6 @@ function syncToSupabase() {
   const scenarioFriendStepIdx = scenarioFriendHeader.indexOf('通数');
   const scenarioFriendBlockIdx = scenarioFriendHeader.indexOf('ユーザーブロック');
 
-  const clickStepIdx = clickLog.header ? clickLog.header.indexOf('通数') : -1;
-
   // ==========================================
   // 日付を "YYYY-MM-DD" 形式に正規化する関数
   // スプシの日付型・文字列型どちらにも対応
