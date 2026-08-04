@@ -10,7 +10,7 @@ type ClientUser = {
   display_name: string;
   is_active: boolean;
   created_at: string;
-  client_permissions: { page: string }[];
+  pages: string[];
 };
 
 const ALL_PAGE_OPTIONS = [
@@ -83,7 +83,7 @@ export default function AdminPage() {
     setUsername(user.username);
     setDisplayName(user.display_name);
     setPassword('');
-    setSelectedPages(user.client_permissions.map((p) => p.page));
+    setSelectedPages(user.pages ?? []);
     setIsActive(user.is_active);
     setShowForm(true);
   }
@@ -271,8 +271,8 @@ export default function AdminPage() {
                     <td className="px-4 py-3">{user.display_name}</td>
                     <td className="px-4 py-3 font-mono">{user.username}</td>
                     <td className="px-4 py-3">
-                      {user.client_permissions.map((p) =>
-                        PAGE_OPTIONS.find((o) => o.key === p.page)?.label ?? p.page
+                      {(user.pages ?? []).map((page: string) =>
+                        PAGE_OPTIONS.find((o) => o.key === page)?.label ?? page
                       ).join('、')}
                     </td>
                     <td className="px-4 py-3">
