@@ -11,4 +11,4 @@ if (getApps().length === 0) {
   });
 }
 
-export const adminDb = getFirestore();
+export const adminDb = getFirestore('report-dashboard');
